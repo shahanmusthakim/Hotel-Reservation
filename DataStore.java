@@ -1,17 +1,18 @@
-//Singleton Pattern + Observer Subject
 import java.io.*;
 import java.util.*;
 
 public class DataStore implements Serializable {
     private static final long serialVersionUID = 1L;
-    private static DataStore instance; // Singleton
+    private static DataStore instance; 
 
     private List<Room> rooms = new ArrayList<>();
     private List<Customer> customers = new ArrayList<>();
     private List<Reservation> pendingReservations = new ArrayList<>();
     private List<Reservation> confirmedReservations = new ArrayList<>();
+    private List<Reservation> historyReservations = new ArrayList<>(); 
+    
     private transient List<DataObserver> observers = new ArrayList<>();
-    private transient Stack<DataStoreMemento> undoStack = new Stack<>(); // Memento history
+    private transient Stack<DataStoreMemento> undoStack = new Stack<>(); 
 
     private DataStore() {}
 
@@ -38,6 +39,7 @@ public class DataStore implements Serializable {
     public List<Customer> getCustomers() { return customers; }
     public List<Reservation> getPendingReservations() { return pendingReservations; }
     public List<Reservation> getConfirmedReservations() { return confirmedReservations; }
+    public List<Reservation> getHistoryReservations() { return historyReservations; } 
 
     public void addRoom(Room r) { rooms.add(r); notifyObservers(); }
     public void addCustomer(Customer c) { saveCustomerState(); customers.add(c); notifyObservers(); }
@@ -55,6 +57,11 @@ public class DataStore implements Serializable {
             DataStore loaded = (DataStore) ois.readObject();
             instance.rooms = loaded.rooms; instance.customers = loaded.customers;
             instance.pendingReservations = loaded.pendingReservations; instance.confirmedReservations = loaded.confirmedReservations;
+            if(loaded.historyReservations != null) instance.historyReservations = loaded.historyReservations;
         } catch (Exception ignored) {}
+    }
+    
+    public void saveDataSilently() {
+        try { saveAll("hoteldata.dat"); } catch (IOException ignored) {}
     }
 }

@@ -1,19 +1,17 @@
-//Facade Pattern
 import java.time.LocalDate;
 
 public class ReservationFacade {
     private DataStore db = DataStore.getInstance();
-    private PaymentProcessor paymentProcessor = new BkashAdapter();
 
-    public boolean bookRoom(Customer c, Room r, LocalDate in, LocalDate out) {
+    public boolean bookRoom(Customer c, Room r, LocalDate in, LocalDate out, PaymentProcessor paymentProcessor) {
         if (!out.isAfter(in)) return false;
         
         Reservation res = new Reservation("RES-" + System.currentTimeMillis(), c, r, in, out);
         
-        // Process payment adapter
         if (paymentProcessor.processPayment(res.getTotalPrice())) {
+            r.setStatus(Room.RoomStatus.BOOKED); 
             db.addPendingReservation(res);
-            try { db.saveAll("hoteldata.dat"); } catch (Exception ignored) {}
+            db.saveDataSilently();
             return true;
         }
         return false;
@@ -25,6 +23,20 @@ public class ReservationFacade {
             db.getPendingReservations().remove(r);
             db.addConfirmedReservation(r);
             r.getRoom().setStatus(Room.RoomStatus.BOOKED);
+            db.notifyObservers();
+        }
+    }
+
+    public void checkOutRoom(String resId) {
+        Reservation r = db.getConfirmedReservations().stream().filter(x -> x.getReservationId().equals(resId)).findFirst().orElse(null);
+        if (r == null) r = db.getPendingReservations().stream().filter(x -> x.getReservationId().equals(resId)).findFirst().orElse(null);
+        
+        if (r != null) {
+            db.getConfirmedReservations().remove(r);
+            db.getPendingReservations().remove(r);
+            r.getRoom().setStatus(Room.RoomStatus.AVAILABLE); 
+            db.getHistoryReservations().add(r); 
+            db.saveDataSilently();
             db.notifyObservers();
         }
     }
